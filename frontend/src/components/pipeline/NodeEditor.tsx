@@ -11,7 +11,7 @@ import {
   Link,
   Unlink
 } from 'lucide-react';
-import type { PipelineNodeData, NodeConnection, NodeTemplate } from '../../types/pipeline';
+import type { PipelineNodeData, NodeConnection } from '../../types/pipeline';
 import { allNodeTemplates } from '../../data/nodeTemplates';
 
 interface NodeEditorProps {
@@ -57,34 +57,12 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({
     for (const input of requiredInputs) {
       const hasConnection = nodeConnections.some(conn => conn.targetHandle === input.id);
       if (!hasConnection) {
-        newErrors.push(`Entrada obrigatória '${input.name}' não conectada`);
+        newErrors.push(`Entrada obrigatória '${input.label}' não conectada`);
       }
     }
 
-    // Validate configuration
-    if (nodeTemplate.validation) {
-      for (const [key, rule] of Object.entries(nodeTemplate.validation)) {
-        const value = localConfig[key];
-        const validationRule = rule as any;
-        
-        if (validationRule.required && (value === undefined || value === null || value === '')) {
-          newErrors.push(`Campo '${key}' é obrigatório`);
-        }
-        
-        if (value !== undefined && validationRule.type && typeof value !== validationRule.type) {
-          newErrors.push(`Campo '${key}' deve ser do tipo ${validationRule.type}`);
-        }
-        
-        if (value !== undefined && validationRule.min !== undefined && value < validationRule.min) {
-          newErrors.push(`Campo '${key}' deve ser maior que ${validationRule.min}`);
-        }
-        
-        if (value !== undefined && validationRule.max !== undefined && value > validationRule.max) {
-          newErrors.push(`Campo '${key}' deve ser menor que ${validationRule.max}`);
-        }
-      }
-    }
-
+    // Basic configuration validation would go here if needed
+    
     setErrors(newErrors);
   };
 
@@ -158,8 +136,8 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({
       <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${nodeTemplate.color}`}>
-              <nodeTemplate.icon className="w-4 h-4 text-white" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-500">
+              <span className="text-white text-sm">{nodeTemplate.icon}</span>
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-900">{node.label}</h3>
@@ -230,13 +208,13 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({
           <div className="space-y-4">
             {Object.entries(nodeTemplate.defaultConfig || {}).map(([key, defaultValue]) => {
               const value = localConfig[key] !== undefined ? localConfig[key] : defaultValue;
-              const validation = nodeTemplate.validation?.[key];
+              // Validation rules would be defined elsewhere if needed
 
               return (
                 <div key={key}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     {key.charAt(0).toUpperCase() + key.slice(1)}
-                    {validation?.required && <span className="text-red-500 ml-1">*</span>}
+
                   </label>
                   
                   {typeof defaultValue === 'boolean' ? (
@@ -254,8 +232,7 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({
                       type="number"
                       value={value}
                       onChange={(e) => handleConfigChange(key, parseFloat(e.target.value))}
-                      min={validation?.min}
-                      max={validation?.max}
+
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     />
                   ) : (

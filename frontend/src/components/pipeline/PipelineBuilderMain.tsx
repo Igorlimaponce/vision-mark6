@@ -2,33 +2,24 @@
 
 import React, { useState } from 'react';
 import { usePipelineBuilder } from '../../hooks/usePipelineBuilder';
-import { PipelineCanvas } from './PipelineCanvas';
+import { PipelineCanvas } from './canvas/PipelineCanvas';
 import { NodeLibrary } from './NodeLibrary';
 import { NodeEditor } from './NodeEditor';
 import { PipelineToolbar } from './PipelineToolbar';
 import { PipelineMonitor } from './PipelineMonitor';
 import { allNodeTemplates } from '../../data/nodeTemplates';
-import type { NodeTemplate, NodePosition } from '../../types/pipeline';
+import type { NodeTemplate } from '../../types/pipeline';
 
 export const PipelineBuilderMain: React.FC = () => {
   const {
     pipeline,
-    canvasState,
     isLoading,
     hasUnsavedChanges,
-    addNode,
     removeNode,
-    updateNodePosition,
     updateNodeConfig,
-    addConnection,
-    removeConnection,
     savePipeline,
     executePipeline,
-    validatePipeline,
-    selectNodes,
-    clearSelection,
-    setZoom,
-    setPan
+    validatePipeline
   } = usePipelineBuilder();
 
   const [showNodeLibrary, setShowNodeLibrary] = useState(true);
@@ -42,20 +33,9 @@ export const PipelineBuilderMain: React.FC = () => {
     setEditingNodeId(null);
   };
 
-  const handleNodeSelect = (nodeId: string) => {
-    selectNodes([nodeId]);
-  };
-
-  const handleNodeMove = (nodeId: string, position: NodePosition) => {
-    updateNodePosition(nodeId, position);
-  };
-
   const handleUpdateNode = (nodeId: string, updates: any) => {
     if (updates.config) {
       updateNodeConfig(nodeId, updates.config);
-    }
-    if (updates.position) {
-      updateNodePosition(nodeId, updates.position);
     }
   };
 
@@ -73,25 +53,11 @@ export const PipelineBuilderMain: React.FC = () => {
     setIsDragging(false);
   };
 
-  const handleCanvasDrop = (event: React.DragEvent, position: NodePosition) => {
-    event.preventDefault();
-    try {
-      const templateData = event.dataTransfer.getData('application/json');
-      const template = JSON.parse(templateData) as NodeTemplate;
-      addNode(template, position);
-    } catch (error) {
-      console.error('Failed to drop node:', error);
-    }
-    setIsDragging(false);
-  };
-
   // Simulated validation result
   const validation = {
     isValid: pipeline.nodes.length > 0,
     errors: pipeline.nodes.length === 0 ? ['Pipeline deve ter pelo menos um nó'] : []
   };
-
-  const selectedNodeId = canvasState.selectedNodes[0] || null;
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -176,20 +142,7 @@ export const PipelineBuilderMain: React.FC = () => {
               </button>
             )}
 
-            <PipelineCanvas
-              pipeline={pipeline}
-              canvasState={canvasState}
-              selectedNodeId={selectedNodeId}
-              onNodeSelect={handleNodeSelect}
-              onNodeMove={handleNodeMove}
-              onNodeDelete={removeNode}
-              onConnectionAdd={addConnection}
-              onConnectionDelete={removeConnection}
-              onCanvasDrop={handleCanvasDrop}
-              onClearSelection={clearSelection}
-              onZoomChange={setZoom}
-              onPanChange={setPan}
-            />
+            <PipelineCanvas className="w-full h-full" />
           </div>
 
           {/* Node Editor */}
