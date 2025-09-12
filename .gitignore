@@ -1,0 +1,569 @@
+# AIOS v2.0 - Complete .gitignore
+
+# ================================
+# Python / Backend
+# ================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff
+instance/
+.webassets-cache
+
+# Scrapy stuff
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+.venv
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
+.idea/
+
+# ================================
+# Node.js / Frontend
+# ================================
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Snowpack dependency directory
+web_modules/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+out
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Vite build output
+dist/
+dist-ssr/
+
+# Rollup.js default build output
+dist/
+
+# Storybook build outputs
+.out
+.storybook-out
+storybook-static
+
+# Temporary folders
+tmp/
+temp/
+
+# ================================
+# AI Models / Large Files
+# ================================
+
+# YOLO models
+*.pt
+*.onnx
+*.tflite
+*.pb
+models/yolo/
+models/weights/
+models/checkpoints/
+
+# TensorFlow models
+*.h5
+*.keras
+saved_model/
+
+# PyTorch models
+*.pth
+*.tar
+
+# Face recognition models
+*.pkl
+*.npy
+models/encodings/
+
+# Training data
+data/train/
+data/val/
+data/test/
+datasets/
+annotations/
+
+# Model outputs
+runs/
+results/
+outputs/
+
+# ================================
+# Docker
+# ================================
+
+# Docker files (keep compose files)
+Dockerfile.prod
+docker-compose.override.yml
+docker-compose.local.yml
+
+# ================================
+# Database
+# ================================
+
+# PostgreSQL
+*.sql
+*.dump
+pgdata/
+postgres_data/
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# Database migrations (keep structure, ignore data)
+**/migrations/versions/*.py
+!**/migrations/versions/__init__.py
+alembic.ini
+
+# ================================
+# Logs
+# ================================
+
+# Application logs
+logs/
+*.log
+*.log.*
+
+# System logs
+/var/log/
+
+# ================================
+# Configuration / Secrets
+# ================================
+
+# API Keys
+api_keys.json
+credentials.json
+service-account.json
+
+# SSL Certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+ssl/
+certs/
+
+# ================================
+# Media / Uploads
+# ================================
+
+# Uploaded images/videos
+uploads/
+media/
+static/uploads/
+
+# Temporary video files
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+temp_videos/
+
+# Screenshots
+screenshots/
+captures/
+
+# ================================
+# Monitoring / Analytics
+# ================================
+
+# Prometheus data
+prometheus_data/
+
+# Grafana data
+grafana_data/
+
+# Logs from monitoring
+monitoring/logs/
+
+# ================================
+# Development Tools
+# ================================
+
+# VS Code settings (keep workspace settings)
+.vscode/settings.json
+.vscode/launch.json
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+*~
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Models and weights
+models/
+*.pt
+*.pth
+*.onnx
+*.h5
+*.pb
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite3
+
+# Docker
+.dockerignore
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# Temporary files
+*.tmp
+*.temp
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Alembic
+# migrations/versions/*.py (keep the versions directory but ignore version files in development)
+
+# ================================
+# OS Generated Files
+# ================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ================================
+# Testing
+# ================================
+
+# Test reports
+test-results/
+coverage/
+.nyc_output
+
+# E2E test artifacts
+test-results/
+playwright-report/
+blob-report/
+
+# ================================
+# Backup Files
+# ================================
+
+*.bak
+*.backup
+*.old
+*.orig
+
+# ================================
+# AIOS Specific
+# ================================
+
+# Stream recordings
+recordings/
+streams/
+
+# ROI configurations (keep templates)
+roi_configs/
+!roi_configs/templates/
+
+# Notification history
+notifications/history/
+
+# PLC communication logs
+plc_logs/
+
+# Calibration data
+calibration/
+
+# Performance metrics
+metrics/
+stats/
+
+# Redis data
+redis_data/
+
+# Media files
+media/
+uploads/
+static/
+
+# Security
+private_key.pem
+public_key.pem
+
+# ================================
+# Keep These Files
+# ================================
+
+# Keep important config templates
+!.env.example
+!config/settings.example.py
+!docker-compose.yml
+!docker-compose.dev.yml
+
+# Keep documentation
+!README.md
+!INSTALLATION.md
+!API_DOCS.md
+!*.md
+
+# Keep essential model files (small ones)
+!models/config.json
+!models/classes.txt
+
+# Keep database schema
+!backend/app/models/
+!backend/alembic/
+
+# Keep static assets
+!frontend/public/
+!frontend/src/assets/icons/

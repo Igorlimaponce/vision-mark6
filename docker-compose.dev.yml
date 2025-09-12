@@ -1,0 +1,69 @@
+# AIOS v2.0 - Development Docker Compose Override
+version: '3.8'
+
+services:
+  # Frontend with hot reload
+  frontend:
+    build:
+      target: development
+    ports:
+      - "5173:5173"  # Vite dev server
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE_URL=http://localhost:8000
+      - VITE_WS_URL=ws://localhost:8000/ws
+    command: npm run dev -- --host 0.0.0.0
+
+  # Backend with hot reload
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+      - ./models:/app/models
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - RELOAD=true
+    ports:
+      - "8000:8000"
+      - "5678:5678"  # debugpy port
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Database with development settings
+  db:
+    environment:
+      - POSTGRES_DB=aios_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+
+  # Redis with development settings
+  redis:
+    ports:
+      - "6379:6379"
+    command: redis-server --save "" --appendonly no
+
+  # Remove monitoring services in development
+  prometheus:
+    profiles:
+      - monitoring
+
+  grafana:
+    profiles:
+      - monitoring
+
+  nginx:
+    profiles:
+      - production
+
+volumes:
+  postgres_dev_data:
