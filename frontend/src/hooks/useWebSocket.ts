@@ -81,7 +81,7 @@ export const useWebSocket = () => {
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
   
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<number | null>(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
   const baseReconnectDelay = 1000; // 1 segundo
@@ -230,7 +230,7 @@ export const useWebSocket = () => {
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttempts.current++;
             connect();
-          }, delay);
+          }, delay) as any;
         } else if (reconnectAttempts.current >= maxReconnectAttempts) {
           logger.error('WebSocket: Max reconnection attempts reached', 'WebSocket');
           setConnectionStatus('error');

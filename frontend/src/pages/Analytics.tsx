@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { Calendar, Download, Filter, TrendingUp, Eye, AlertTriangle, CheckCircle } from 'lucide-react';
+import { TrendingUp, Calendar, Download, Eye, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { useAuth } from '../hooks/useAuth';
@@ -37,7 +37,7 @@ const deviceStatusData = [
 export const Analytics = () => {
   const { hasPermission } = useAuth();
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
-  const [selectedMetrics, setSelectedMetrics] = useState(['detections', 'alerts', 'devices']);
+  // const [selectedMetrics, setSelectedMetrics] = useState(['detections', 'alerts', 'devices']);
 
   useEffect(() => {
     // Definir range padrão (últimos 30 dias)

@@ -59,7 +59,7 @@ def create_device(db: Session, device: DeviceCreate) -> Device:
         device_type=device.device_type,
         rtsp_url=device.rtsp_url,
         location=device.location,
-        metadata=device.metadata,
+        device_metadata=device.metadata,
         organization_id=device.organization_id,
         status="OFF"  # Default status
     )
@@ -101,10 +101,10 @@ def update_device_status(db: Session, status_update: DeviceStatusUpdate) -> Opti
         db_device.last_seen = datetime.utcnow()
     
     if status_update.metadata:
-        if db_device.metadata:
-            db_device.metadata.update(status_update.metadata)
+        if db_device.device_metadata:
+            db_device.device_metadata.update(status_update.metadata)
         else:
-            db_device.metadata = status_update.metadata
+            db_device.device_metadata = status_update.metadata
     
     db.commit()
     db.refresh(db_device)

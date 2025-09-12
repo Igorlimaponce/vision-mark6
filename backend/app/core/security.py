@@ -55,3 +55,22 @@ def verify_token(token: str) -> Union[str, None]:
         return username
     except jwt.JWTError:
         return None
+
+
+def authenticate_user(username: str, password: str):
+    """
+    Autentica um usuário verificando username e senha.
+    """
+    from app.crud import crud_user
+    from app.db.session import SessionLocal
+    
+    db = SessionLocal()
+    try:
+        user = crud_user.get_by_email(db, email=username)
+        if not user:
+            return False
+        if not verify_password(password, user.hashed_password):
+            return False
+        return user
+    finally:
+        db.close()

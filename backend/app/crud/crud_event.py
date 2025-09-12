@@ -73,7 +73,7 @@ def create_event(db: Session, event: EventCreate) -> Event:
         severity=event.severity,
         title=event.title,
         description=event.description,
-        metadata=event.metadata
+        event_metadata=event.metadata
     )
     db.add(db_event)
     db.commit()

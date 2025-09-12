@@ -80,7 +80,7 @@ export const AlertsPage = () => {
   const [filteredAlerts, setFilteredAlerts] = useState<Alert[]>(mockAlerts);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
+  // const [selectedStatus, setSelectedStatus] = useState('all');
   const [showAcknowledged, setShowAcknowledged] = useState(true);
 
   const debouncedSearchTerm = useDebounce(searchTerm, { delay: 300 });

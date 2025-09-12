@@ -21,8 +21,8 @@ class WebSocketService {
   private ws: WebSocket | null = null;
   private config: WebSocketConfig;
   private reconnectAttempts = 0;
-  private reconnectTimer: NodeJS.Timeout | null = null;
-  private heartbeatTimer: NodeJS.Timeout | null = null;
+  private reconnectTimer: number | null = null;
+  private heartbeatTimer: number | null = null;
   private listeners = new Map<string, ((data: any) => void)[]>();
   private isConnected = false;
   private shouldReconnect = true;
@@ -189,7 +189,7 @@ class WebSocketService {
   }
 
   private handlePipelineStatusChange(data: any): void {
-    const { pipelineId, pipelineName, status, error } = data;
+    const { pipelineName, status, error } = data;
     
     switch (status) {
       case 'started':
@@ -205,7 +205,7 @@ class WebSocketService {
   }
 
   private handleAlert(data: any): void {
-    const { level, message, deviceId } = data;
+    const { level, message } = data;
     
     switch (level) {
       case 'critical':
@@ -251,7 +251,7 @@ class WebSocketService {
       this.connect().catch(() => {
         // Erro será tratado no evento onerror
       });
-    }, delay);
+    }, delay) as any;
   }
 
   private startHeartbeat(): void {
@@ -263,7 +263,7 @@ class WebSocketService {
           timestamp: new Date().toISOString()
         });
       }
-    }, this.config.heartbeatInterval);
+    }, this.config.heartbeatInterval) as any;
   }
 
   private stopHeartbeat(): void {

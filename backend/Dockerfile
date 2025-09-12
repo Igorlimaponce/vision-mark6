@@ -21,7 +21,6 @@ RUN apt-get update \
         libxext6 \
         libxrender-dev \
         libgomp1 \
-        libglib2.0-0 \
         libgtk-3-0 \
         libavcodec-dev \
         libavformat-dev \
@@ -32,16 +31,24 @@ RUN apt-get update \
         libjpeg-dev \
         libpng-dev \
         libtiff-dev \
-        libatlas-base-dev \
+        libopenblas-dev \
+        liblapack-dev \
+        libgl1-mesa-dev \
+        libgthread-2.0-0 \
         gfortran \
         wget \
         unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Install Python dependencies in stages
 COPY requirements.txt .
+
+# First install base scientific computing packages
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+    && pip install --no-cache-dir numpy==1.24.4 scipy==1.11.4
+
+# Then install all other dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project
 COPY . .

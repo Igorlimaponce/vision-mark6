@@ -1,7 +1,7 @@
 // Página de Configurações conforme manual AIOS v2.0
 
 import { useState } from 'react';
-import { Settings, Save, RefreshCw, Shield, Bell, Database, Network, User, Eye, EyeOff } from 'lucide-react';
+import { Settings, Save, Shield, Bell, Eye, EyeOff } from 'lucide-react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { useAuth } from '../hooks/useAuth';

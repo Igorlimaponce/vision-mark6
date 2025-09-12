@@ -33,7 +33,7 @@ export const useDebouncedCallback = <T extends (...args: any[]) => any>(
 ) => {
   const { delay = 300, leading = false, trailing = true } = options;
   const [lastCallTime, setLastCallTime] = useState<number | null>(null);
-  const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
+  const [timeoutId, setTimeoutId] = useState<number | null>(null);
 
   const debouncedCallback = useCallback(
     (...args: Parameters<T>) => {
@@ -55,7 +55,7 @@ export const useDebouncedCallback = <T extends (...args: any[]) => any>(
           setTimeoutId(null);
         }, delay);
         
-        setTimeoutId(newTimeoutId);
+        setTimeoutId(newTimeoutId as any);
       }
     },
     [callback, delay, leading, trailing, lastCallTime, timeoutId]
