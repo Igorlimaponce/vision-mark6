@@ -2,56 +2,39 @@ import { useState, useEffect } from 'react';
 import { SearchBar } from '../components/fleet/SearchBar';
 import { DeviceListItem } from '../components/fleet/DeviceListItem';
 import { SummaryCard } from '../components/fleet/SummaryCard';
-import { devicesApi, type Device } from '../services/api';
-import { useWebSocket, type DeviceUpdate } from '../hooks/useWebSocket';
+import { fleetApi } from '../api/fleetApi';
+import type { DeviceUI, FleetSummary } from '../types';
 import { Loading } from '../components/common/Loading';
 import toast from 'react-hot-toast';
 
 export const FleetManagement: React.FC = () => {
-  const [devices, setDevices] = useState<Device[]>([]);
+  const [devices, setDevices] = useState<DeviceUI[]>([]);
+  const [summary, setSummary] = useState<FleetSummary | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // WebSocket para updates em tempo real
-  const { isConnected, onDeviceUpdate } = useWebSocket();
 
   // Carregar dispositivos da API
   useEffect(() => {
     loadDevices();
   }, []);
 
-  // Configurar listener para updates de dispositivos via WebSocket
-  useEffect(() => {
-    if (isConnected) {
-      const cleanup = onDeviceUpdate((update: DeviceUpdate) => {
-        setDevices(prevDevices => 
-          prevDevices.map(device => 
-            device.id === update.device_id 
-              ? { ...device, status: update.status, last_seen: update.last_seen }
-              : device
-          )
-        );
-        
-        // Mostrar notificação para mudanças de status importantes
-        const device = devices.find(d => d.id === update.device_id);
-        if (device && device.status !== update.status) {
-          const statusText = update.status === 'online' ? 'Online' : 
-                           update.status === 'offline' ? 'Offline' : 'Warning';
-          toast.success(`${device.name} agora está ${statusText}`);
-        }
-      });
-
-      return cleanup;
-    }
-  }, [isConnected, onDeviceUpdate, devices]);
-
   const loadDevices = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const devicesData = await devicesApi.getAll();
+      
+      // Usar o método com fallback para garantir que funcione mesmo se API estiver offline
+      const devicesData = await fleetApi.getDevicesWithFallback();
       setDevices(devicesData);
+      
+      // Tentar carregar o summary também
+      try {
+        const summaryData = await fleetApi.getFleetSummary();
+        setSummary(summaryData);
+      } catch (summaryError) {
+        console.warn('Não foi possível carregar summary:', summaryError);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar dispositivos');
       toast.error('Erro ao carregar dispositivos');
@@ -63,8 +46,7 @@ export const FleetManagement: React.FC = () => {
   // Filtrar dispositivos baseado no termo de busca
   const filteredDevices = devices.filter(device =>
     device.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    device.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (device.location && device.location.toLowerCase().includes(searchTerm.toLowerCase()))
+    device.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleDeviceClick = (deviceId: string) => {
@@ -73,11 +55,12 @@ export const FleetManagement: React.FC = () => {
     // Aqui seria implementada a navegação para a página de detalhes
   };
 
-  // Calcular estatísticas
-  const onlineDevices = devices.filter(d => d.status === 'online').length;
-  const offlineDevices = devices.filter(d => d.status === 'offline').length;
-  const warningDevices = devices.filter(d => d.status === 'warning').length;
-  const totalCameras = devices.filter(d => d.device_type === 'camera').length;
+  // Calcular estatísticas baseado no summary ou nos devices carregados
+  const onlineDevices = summary?.online_devices || devices.filter(d => d.status === 'ON').length;
+  const offlineDevices = summary?.offline_devices || devices.filter(d => d.status === 'OFF').length;
+  const warningDevices = summary?.warning_devices || devices.filter(d => d.status === 'WARNING').length;
+  const totalDevices = summary?.total_devices || devices.length;
+  const totalCameras = devices.filter(d => d.type === 'camera').length;
 
   if (isLoading) {
     return (
@@ -118,13 +101,13 @@ export const FleetManagement: React.FC = () => {
         
         {filteredDevices.length > 0 ? (
           <div className="space-y-3">
-            {filteredDevices.map((device: Device) => (
+            {filteredDevices.map((device: DeviceUI) => (
               <DeviceListItem
                 key={device.id}
                 id={device.id}
                 name={device.name}
-                lastSeen={new Date(device.last_seen)}
-                status={device.status === 'online' ? 'ON' : device.status === 'offline' ? 'OFF' : 'WARNING'}
+                lastSeen={device.lastSeen}
+                status={device.status}
                 onClick={handleDeviceClick}
               />
             ))}

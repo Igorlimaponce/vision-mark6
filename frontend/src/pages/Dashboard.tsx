@@ -1,16 +1,20 @@
-import { useState } from 'react';
-import { BarChart3, Users, Activity, AlertTriangle, TrendingUp, Download } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { BarChart3, Users, Activity, AlertTriangle, TrendingUp, Download, RefreshCw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
+import { Loading } from '../components/common/Loading';
 import { 
   VehicleCountWidget, 
-  DetectionTrendsWidget, 
-  DeviceStatusMetrics 
+  DetectionTrendsWidget
 } from '../components/dashboard/widgets';
+import { RealTimeMetrics } from '../components/dashboard/RealTimeMetrics';
+import { dashboardApi } from '../api/dashboardApi';
+import type { DashboardMetrics, DevicesStatusData, RecentEvent, PipelineStats } from '../api/dashboardApi';
 import { useAuth } from '../hooks/useAuth';
 import { AUTH_CONFIG } from '../config/auth';
 import { notifications } from '../utils/notifications';
+import toast from 'react-hot-toast';
 
 // Dados mock para analytics
 const detectionData = [
@@ -22,11 +26,7 @@ const detectionData = [
   { name: 'Jun', deteccoes: 2800, alertas: 123 }
 ];
 
-const deviceStatusData = [
-  { name: 'Online', value: 85, color: '#10B981' },
-  { name: 'Offline', value: 12, color: '#6B7280' },
-  { name: 'Warning', value: 3, color: '#F59E0B' }
-];
+
 
 const performanceData = [
   { hora: '00:00', cpu: 35, memoria: 45, fps: 28 },
@@ -40,12 +40,78 @@ const performanceData = [
 export const Dashboard: React.FC = () => {
   const { hasPermission } = useAuth();
   const [timeRange, setTimeRange] = useState('7d');
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [devicesStatus, setDevicesStatus] = useState<DevicesStatusData | null>(null);
+  const [recentEvents, setRecentEvents] = useState<RecentEvent[]>([]);
+  const [pipelineStats, setPipelineStats] = useState<PipelineStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const canExport = hasPermission(AUTH_CONFIG.permissions.ANALYTICS_EXPORT);
+
+  // Carregar dados do dashboard
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Carregar todos os dados do dashboard
+      const [metricsData, devicesStatusData, eventsData, pipelineData] = await Promise.all([
+        dashboardApi.getMetrics(),
+        dashboardApi.getDevicesStatus(),
+        dashboardApi.getRecentEvents(),
+        dashboardApi.getPipelineStats()
+      ]);
+      
+      setMetrics(metricsData);
+      setDevicesStatus(devicesStatusData);
+      setRecentEvents(eventsData);
+      setPipelineStats(pipelineData);
+      
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar dashboard';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    toast.success('Atualizando dados...');
+    loadDashboardData();
+  };
 
   const handleExport = (format: string) => {
     notifications.success(`Exportando dados em formato ${format}...`);
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <Loading size="lg" />
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-12">
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button onClick={loadDashboardData}>Tentar Novamente</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -57,6 +123,16 @@ export const Dashboard: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleRefresh}
+            className="flex items-center gap-1"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Atualizar
+          </Button>
+          
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value)}
@@ -94,7 +170,62 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Métricas de Status */}
-      <DeviceStatusMetrics />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Total de Dispositivos */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total de Dispositivos</p>
+              <p className="text-2xl font-bold text-gray-900">{metrics?.devices.total || 0}</p>
+            </div>
+            <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Users className="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Dispositivos Online */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Dispositivos Online</p>
+              <p className="text-2xl font-bold text-green-600">{metrics?.devices.online || 0}</p>
+            </div>
+            <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <Activity className="h-6 w-6 text-green-600" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Pipelines Ativas */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Pipelines Ativas</p>
+              <p className="text-2xl font-bold text-orange-600">{metrics?.system.active_pipelines || 0}</p>
+            </div>
+            <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
+              <TrendingUp className="h-6 w-6 text-orange-600" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Alertas */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Dispositivos com Alertas</p>
+              <p className="text-2xl font-bold text-yellow-600">{metrics?.devices.warning || 0}</p>
+            </div>
+            <div className="h-12 w-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+              <AlertTriangle className="h-6 w-6 text-yellow-600" />
+            </div>
+          </div>
+        </Card>
+      </div>
+      
+      {/* Real-time System Metrics */}
+      <RealTimeMetrics />
       
       {/* Widgets de Gráficos Principais */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -131,22 +262,49 @@ export const Dashboard: React.FC = () => {
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={deviceStatusData}
+                data={[
+                  { name: 'Online', value: devicesStatus?.data.online || 0, color: '#10B981' },
+                  { name: 'Warning', value: devicesStatus?.data.warning || 0, color: '#F59E0B' },
+                  { name: 'Offline', value: devicesStatus?.data.offline || 0, color: '#EF4444' }
+                ]}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={(entry: any) => `${entry.name} ${((entry.value / 100) * 100).toFixed(0)}%`}
+                label={(entry: any) => `${entry.name}: ${entry.value}`}
                 outerRadius={100}
                 fill="#8884d8"
                 dataKey="value"
               >
-                {deviceStatusData.map((entry, index) => (
+                {[
+                  { name: 'Online', value: devicesStatus?.data.online || 0, color: '#10B981' },
+                  { name: 'Warning', value: devicesStatus?.data.warning || 0, color: '#F59E0B' },
+                  { name: 'Offline', value: devicesStatus?.data.offline || 0, color: '#EF4444' }
+                ].map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
               <Tooltip />
             </PieChart>
           </ResponsiveContainer>
+          <div className="mt-4 flex justify-center">
+            <div className="flex items-center gap-4">
+              {[
+                { name: 'Online', value: devicesStatus?.data.online || 0, color: '#10B981' },
+                { name: 'Warning', value: devicesStatus?.data.warning || 0, color: '#F59E0B' },
+                { name: 'Offline', value: devicesStatus?.data.offline || 0, color: '#EF4444' }
+              ].map((item, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <div 
+                    className="w-3 h-3 rounded-full" 
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <span className="text-sm text-gray-600">
+                    {item.name}: {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </Card>
       </div>
 

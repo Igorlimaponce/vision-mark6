@@ -179,3 +179,21 @@ def mark_device_offline_if_stale(db: Session, minutes_threshold: int = 5) -> int
     db.commit()
     
     return count
+
+
+def count_devices_by_status(db: Session, organization_id: UUID, status: str) -> int:
+    """
+    Conta dispositivos por status específico.
+    """
+    return db.query(func.count(Device.id)).filter(
+        and_(Device.organization_id == organization_id, Device.status == status)
+    ).scalar()
+
+
+def count_devices_by_type(db: Session, organization_id: UUID, device_type: str) -> int:
+    """
+    Conta dispositivos por tipo.
+    """
+    return db.query(func.count(Device.id)).filter(
+        and_(Device.organization_id == organization_id, Device.device_type == device_type)
+    ).scalar()

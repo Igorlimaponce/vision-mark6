@@ -18,7 +18,7 @@ from app.db.models.user import User
 router = APIRouter()
 
 
-@router.get("/", response_model=DeviceListResponse)
+@router.get("/devices", response_model=DeviceListResponse)
 def read_devices(
     db: Session = Depends(get_db),
     skip: int = 0,
@@ -60,7 +60,7 @@ def get_fleet_summary(
     return crud_device.get_fleet_summary(db, current_user.organization_id)
 
 
-@router.post("/", response_model=Device)
+@router.post("/devices", response_model=Device)
 def create_device(
     *,
     db: Session = Depends(get_db),
@@ -87,7 +87,7 @@ def create_device(
     return device
 
 
-@router.get("/{device_id}", response_model=Device)
+@router.get("/devices/{device_id}", response_model=Device)
 def read_device(
     *,
     db: Session = Depends(get_db),
@@ -111,7 +111,7 @@ def read_device(
     return device
 
 
-@router.put("/{device_id}", response_model=Device)
+@router.put("/devices/{device_id}", response_model=Device)
 def update_device(
     *,
     db: Session = Depends(get_db),
@@ -137,40 +137,29 @@ def update_device(
     return device
 
 
-@router.post("/{device_id}/status", response_model=Device)
+@router.patch("/devices/{device_id}/status", response_model=Device)
 def update_device_status(
     *,
     db: Session = Depends(get_db),
     device_id: str,
-    status_data: dict,
+    status_update: DeviceStatusUpdate,
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
     """
-    Update device status (heartbeat endpoint).
-    This endpoint is typically called by devices themselves.
+    Update device status.
     """
     device = crud_device.get_device(db, device_id=device_id)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
     
-    # Check if the device belongs to the same organization
     if device.organization_id != current_user.organization_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
-        )
+        raise HTTPException(status_code=403, detail="Not enough permissions")
     
-    status_update = DeviceStatusUpdate(
-        device_id=device_id,
-        status=status_data.get("status", "ON"),
-        metadata=status_data.get("metadata")
-    )
-    
-    device = crud_device.update_device_status(db, status_update)
+    device = crud_device.update_device_status(db, device_id=device_id, status=status_update.status)
     return device
 
 
-@router.delete("/{device_id}")
+@router.delete("/devices/{device_id}")
 def delete_device(
     *,
     db: Session = Depends(get_db),

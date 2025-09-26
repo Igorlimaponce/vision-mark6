@@ -207,3 +207,12 @@ def get_pipeline_edges(db: Session, pipeline_id: UUID) -> List[PipelineEdge]:
     Busca todas as arestas de um pipeline.
     """
     return db.query(PipelineEdge).filter(PipelineEdge.pipeline_id == pipeline_id).all()
+
+
+def count_pipelines_by_status(db: Session, organization_id: UUID, status: str) -> int:
+    """
+    Conta pipelines por status específico.
+    """
+    return db.query(func.count(Pipeline.id)).filter(
+        and_(Pipeline.organization_id == organization_id, Pipeline.status == status)
+    ).scalar()

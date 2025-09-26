@@ -140,11 +140,12 @@ def execute_pipeline(
     *,
     db: Session = Depends(get_db),
     pipeline_id: str,
-    execution: PipelineExecution,
+    execution: Optional[PipelineExecution] = None,
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
     """
-    Execute pipeline operations (start, stop, restart).
+    Execute pipeline operations (start, stop, restart) with Computer Vision integration.
+    If no execution parameters provided, defaults to 'start' action.
     """
     pipeline = crud_pipeline.get_pipeline(db, pipeline_id=pipeline_id)
     if not pipeline:
@@ -157,26 +158,95 @@ def execute_pipeline(
             detail="Not enough permissions"
         )
     
+    # Default action if no execution parameters provided
+    action = execution.action if execution else "start"
+    
     # Validate action
-    if execution.action not in ["start", "stop", "restart"]:
+    if action not in ["start", "stop", "restart"]:
         raise HTTPException(status_code=400, detail="Invalid action")
     
+    # Converter dados do pipeline para formato de execução
+    pipeline_config = {
+        'name': pipeline.name,
+        'description': pipeline.description,
+        'nodes': [
+            {
+                'node_id': node.node_id,
+                'node_type': node.node_type,
+                'config': node.config,
+                'position': node.position
+            }
+            for node in pipeline.nodes
+        ],
+        'edges': [
+            {
+                'edge_id': edge.edge_id,
+                'source_node_id': str(edge.source_node_id),
+                'target_node_id': str(edge.target_node_id),
+                'source_handle': edge.source_handle,
+                'target_handle': edge.target_handle
+            }
+            for edge in pipeline.edges
+        ]
+    }
+    
     # Execute the action based on the requested operation
-    if execution.action == "start":
+    if action == "start":
         if pipeline.status == "active":
             raise HTTPException(status_code=400, detail="Pipeline is already active")
-        new_status = "active"
-        # TODO: Here you would start the actual pipeline execution using Celery
         
-    elif execution.action == "stop":
+        # Criar pipeline no gerenciador se não existir
+        if not pipeline_manager.pipelines.get(str(pipeline.id)):
+            success = pipeline_manager.create_pipeline(str(pipeline.id), pipeline_config)
+            if not success:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to create pipeline execution instance"
+                )
+        
+        # Iniciar execução
+        success = pipeline_manager.start_pipeline(str(pipeline.id))
+        if not success:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to start pipeline execution"
+            )
+        new_status = "active"
+        
+    elif action == "stop":
         if pipeline.status != "active":
             raise HTTPException(status_code=400, detail="Pipeline is not active")
-        new_status = "inactive"
-        # TODO: Here you would stop the pipeline execution
         
-    elif execution.action == "restart":
+        # Parar execução
+        success = pipeline_manager.stop_pipeline(str(pipeline.id))
+        if not success:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to stop pipeline execution"
+            )
+        new_status = "inactive"
+        
+    elif action == "restart":
+        # Parar se estiver ativo
+        if pipeline.status == "active":
+            pipeline_manager.stop_pipeline(str(pipeline.id))
+        
+        # Criar/recriar pipeline
+        success = pipeline_manager.create_pipeline(str(pipeline.id), pipeline_config)
+        if not success:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to recreate pipeline execution instance"
+            )
+        
+        # Iniciar execução
+        success = pipeline_manager.start_pipeline(str(pipeline.id))
+        if not success:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to restart pipeline execution"
+            )
         new_status = "active"
-        # TODO: Here you would restart the pipeline execution
     
     # Update pipeline status
     pipeline = crud_pipeline.update_pipeline_status(db, pipeline_id=pipeline_id, status=new_status)
@@ -263,71 +333,7 @@ def get_active_pipelines(
     return pipelines
 
 
-# Novos endpoints para execução de pipelines
-
-@router.post("/{pipeline_id}/execute")
-def execute_pipeline(
-    *,
-    db: Session = Depends(get_db),
-    pipeline_id: str,
-    current_user: User = Depends(get_current_active_user),
-) -> Any:
-    """
-    Executa um pipeline de Computer Vision.
-    """
-    # Verificar se pipeline existe
-    pipeline = crud_pipeline.get_pipeline(db, pipeline_id=pipeline_id)
-    if not pipeline:
-        raise HTTPException(status_code=404, detail="Pipeline not found")
-    
-    # Verificar permissões
-    if pipeline.organization_id != current_user.organization_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
-        )
-    
-    # Converter dados do pipeline para formato de execução
-    pipeline_config = {
-        'name': pipeline.name,
-        'description': pipeline.description,
-        'nodes': [
-            {
-                'node_id': node.node_id,
-                'node_type': node.node_type,
-                'config': node.config,
-                'position': node.position
-            }
-            for node in pipeline.nodes
-        ],
-        'edges': [
-            {
-                'edge_id': edge.edge_id,
-                'source_node_id': str(edge.source_node_id),
-                'target_node_id': str(edge.target_node_id),
-                'source_handle': edge.source_handle,
-                'target_handle': edge.target_handle
-            }
-            for edge in pipeline.edges
-        ]
-    }
-    
-    # Criar pipeline no gerenciador se não existir
-    if not pipeline_manager.pipelines.get(str(pipeline.id)):
-        success = pipeline_manager.create_pipeline(str(pipeline.id), pipeline_config)
-        if not success:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to create pipeline execution instance"
-            )
-    
-    # Iniciar execução
-    success = pipeline_manager.start_pipeline(str(pipeline.id))
-    if not success:
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to start pipeline execution"
-        )
+# Endpoint consolidado para execução de pipelines - removido duplicação
     
     # Atualizar status no banco
     crud_pipeline.update_pipeline(

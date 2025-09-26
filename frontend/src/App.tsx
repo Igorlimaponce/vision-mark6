@@ -10,6 +10,7 @@ import { ConfigurationsPage } from './pages/ConfigurationsPage';
 import { UserManagement } from './pages/UserManagement';
 import { AlertsPage } from './pages/AlertsPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { EventsPage } from './pages/EventsPage';
 import { LoginPage } from './pages/LoginPage';
 import { WebSocketProvider } from './providers/WebSocketProvider';
 import { useAuth } from './hooks/useAuth';
@@ -51,6 +52,7 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/pipelines" element={<Pipelines />} />
               <Route path="/pipeline-builder" element={<PipelineBuilderMain />} />
+              <Route path="/events" element={<EventsPage />} />
               <Route path="/alerts" element={<AlertsPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/users" element={<UserManagement />} />

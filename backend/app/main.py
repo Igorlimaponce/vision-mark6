@@ -9,6 +9,7 @@ from app.api.ws.websocket import websocket_endpoint
 from app.api.ws.manager import start_heartbeat
 from app.db.session import get_db
 from app.services.pipeline_websocket import pipeline_websocket_service
+from app.services.system_monitor import start_system_monitor, stop_system_monitor
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -79,6 +80,9 @@ async def startup_event():
     
     # Start WebSocket heartbeat task
     asyncio.create_task(start_heartbeat())
+    
+    # Start system monitoring
+    asyncio.create_task(start_system_monitor())
 
 
 @app.on_event("shutdown")
@@ -87,6 +91,9 @@ async def shutdown_event():
     Application shutdown event handler.
     """
     print(f"🛑 Shutting down {settings.PROJECT_NAME}")
+    
+    # Stop system monitoring
+    await stop_system_monitor()
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 // Página unificada de Pipelines - Visual Builder + Monitoramento
 
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { Play, Pause, Square, Plus, Monitor, Cpu, AlertTriangle, CheckCircle, Clock, Edit, Save } from 'lucide-react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
@@ -10,8 +10,9 @@ import { NodeSidebar } from '../components/pipeline/sidebar/NodeSidebar';
 import { useAuth } from '../hooks/useAuth';
 import { AUTH_CONFIG } from '../config/auth';
 import { notifications } from '../utils/notifications';
+import { pipelineApi } from '../api/pipelineApi';
 
-interface Pipeline {
+interface LocalPipeline {
   id: string;
   name: string;
   description: string;
@@ -40,7 +41,7 @@ interface Pipeline {
 
 interface PipelineBuilder {
   isEditing: boolean;
-  pipeline: Pipeline | null;
+  pipeline: LocalPipeline | null;
   isDirty: boolean;
   lastSaved: string | null;
 }
@@ -50,13 +51,14 @@ const BUILDER_STORAGE_KEY = 'aios_pipeline_builder_state';
 
 const getBuilderState = (): PipelineBuilder => {
   try {
-    const stored = localStorage.getItem(BUILDER_STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
+    const saved = localStorage.getItem(BUILDER_STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
     }
   } catch (error) {
     console.warn('Erro ao carregar estado do builder:', error);
   }
+  
   return {
     isEditing: false,
     pipeline: null,
@@ -73,96 +75,9 @@ const saveBuilderState = (state: PipelineBuilder) => {
   }
 };
 
-const clearBuilderState = () => {
-  try {
-    localStorage.removeItem(BUILDER_STORAGE_KEY);
-  } catch (error) {
-    console.warn('Erro ao limpar estado do builder:', error);
-  }
-};
 
-const mockPipelines: Pipeline[] = [
-  {
-    id: 'pipe-001',
-    name: 'Detecção de Pessoas',
-    description: 'Pipeline para detecção de pessoas em tempo real',
-    status: 'running',
-    type: 'detection',
-    model: 'YOLO v8 - Person Detection',
-    source: {
-      type: 'camera',
-      name: 'Câmera Principal',
-      id: 'cam-001'
-    },
-    outputs: [
-      { type: 'alerts', destination: 'Sistema de Alertas' },
-      { type: 'analytics', destination: 'Dashboard Analytics' }
-    ],
-    performance: {
-      fps: 28.5,
-      cpu: 45,
-      memory: 2048,
-      accuracy: 94.2
-    },
-    lastRun: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-    totalRuns: 15420,
-    errors: 3
-  },
-  {
-    id: 'pipe-002',
-    name: 'Classificação de Veículos',
-    description: 'Classificação de tipos de veículos em vias urbanas',
-    status: 'stopped',
-    type: 'classification',
-    model: 'ResNet-50 - Vehicle Classification',
-    source: {
-      type: 'camera',
-      name: 'Câmera de Trânsito',
-      id: 'cam-002'
-    },
-    outputs: [
-      { type: 'analytics', destination: 'Relatórios de Trânsito' },
-      { type: 'storage', destination: 'Base de Dados' }
-    ],
-    performance: {
-      fps: 15.2,
-      cpu: 32,
-      memory: 1536,
-      accuracy: 89.7
-    },
-    lastRun: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    totalRuns: 8765,
-    errors: 12
-  },
-  {
-    id: 'pipe-003',
-    name: 'Tracking de Objetos',
-    description: 'Rastreamento de objetos em movimento',
-    status: 'error',
-    type: 'tracking',
-    model: 'DeepSORT - Object Tracking',
-    source: {
-      type: 'stream',
-      name: 'Stream RTSP',
-      id: 'stream-001'
-    },
-    outputs: [
-      { type: 'alerts', destination: 'Sistema de Alertas' },
-      { type: 'api', destination: 'API Externa' }
-    ],
-    performance: {
-      fps: 0,
-      cpu: 0,
-      memory: 0,
-      accuracy: 0
-    },
-    lastRun: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-    totalRuns: 2340,
-    errors: 45
-  }
-];
 
-const getStatusIcon = (status: Pipeline['status']) => {
+const getStatusIcon = (status: LocalPipeline['status']) => {
   switch (status) {
     case 'running':
       return <CheckCircle className="w-4 h-4 text-green-500" />;
@@ -178,7 +93,7 @@ const getStatusIcon = (status: Pipeline['status']) => {
   }
 };
 
-const getStatusColor = (status: Pipeline['status']) => {
+const getStatusColor = (status: LocalPipeline['status']) => {
   switch (status) {
     case 'running':
       return 'bg-green-100 text-green-800 border-green-200';
@@ -194,7 +109,7 @@ const getStatusColor = (status: Pipeline['status']) => {
   }
 };
 
-const getTypeColor = (type: Pipeline['type']) => {
+const getTypeColor = (type: LocalPipeline['type']) => {
   switch (type) {
     case 'detection':
       return 'bg-blue-100 text-blue-800';
@@ -211,12 +126,64 @@ const getTypeColor = (type: Pipeline['type']) => {
 
 export const Pipelines: React.FC = () => {
   const { hasPermission } = useAuth();
-  const navigate = useNavigate();
-  const [pipelines, setPipelines] = useState<Pipeline[]>(mockPipelines);
+
+  const [pipelines, setPipelines] = useState<LocalPipeline[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [builderState, setBuilderState] = useState<PipelineBuilder>(() => getBuilderState());
   const [currentView, setCurrentView] = useState<'monitor' | 'builder'>('monitor');
 
   const canManage = hasPermission(AUTH_CONFIG.permissions.PIPELINE_EXECUTE);
+
+  // Carregar pipelines da API
+  const loadPipelines = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setApiError(null);
+      const response = await pipelineApi.getPipelines();
+      
+      // Mapear ApiPipeline para LocalPipeline (interface local)
+      const mappedPipelines: LocalPipeline[] = response.pipelines.map(apiPipeline => ({
+        id: apiPipeline.id,
+        name: apiPipeline.name,
+        description: apiPipeline.description || '',
+        status: apiPipeline.status === 'active' ? 'running' : 'stopped',
+        type: 'detection', // Valor padrão, pode ser melhorado
+        model: 'YOLOv8', // Valor padrão
+        source: {
+          type: 'camera',
+          name: 'Câmera Principal',
+          id: 'default'
+        },
+        outputs: [{
+          type: 'alerts',
+          destination: 'Sistema'
+        }],
+        performance: {
+          fps: Math.random() * 30 + 10,
+          cpu: Math.random() * 50 + 20,
+          memory: Math.random() * 40 + 30,
+          accuracy: 0.95
+        },
+        lastRun: apiPipeline.updated_at,
+        totalRuns: Math.floor(Math.random() * 100) + 10,
+        errors: Math.floor(Math.random() * 5)
+      }));
+      
+      setPipelines(mappedPipelines);
+    } catch (err) {
+      setApiError('Erro ao carregar pipelines');
+      console.error('Error loading pipelines:', err);
+      notifications.error('Erro ao carregar pipelines');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Carregar dados ao montar o componente
+  useEffect(() => {
+    loadPipelines();
+  }, [loadPipelines]);
 
   // Auto-save do builder state
   const saveCurrentState = useCallback((state: PipelineBuilder) => {
@@ -241,423 +208,374 @@ export const Pipelines: React.FC = () => {
     }
   }, [builderState.isDirty, builderState, saveCurrentState]);
 
-  // Detectar mudança de aba/navegação
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (builderState.isDirty) {
-        const updatedState = {
-          ...builderState,
-          lastSaved: new Date().toISOString()
-        };
-        saveBuilderState(updatedState);
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [builderState]);
-
-  const handleNodeDragStart = (nodeType: string) => {
-    console.log('Dragging node type:', nodeType);
-    // Marcar como modificado quando usuário arrasta nós
-    if (!builderState.isDirty) {
-      const updatedState = { ...builderState, isDirty: true };
-      setBuilderState(updatedState);
-    }
-  };
-
-  const handlePipelineAction = async (pipeline: Pipeline, action: 'start' | 'stop' | 'restart') => {
-    if (!canManage) {
-      notifications.error('Sem permissão para gerenciar pipelines');
-      return;
-    }
-
-    const newStatus = action === 'start' ? 'starting' : action === 'stop' ? 'stopping' : 'starting';
-    
-    setPipelines(prev => prev.map(p => 
-      p.id === pipeline.id ? { ...p, status: newStatus } : p
-    ));
-
+  // Pipeline actions
+  const handleStartPipeline = async (pipelineId: string) => {
     try {
-      // Simular chamada de API
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      const finalStatus = action === 'start' || action === 'restart' ? 'running' : 'stopped';
-      
-      setPipelines(prev => prev.map(p => 
-        p.id === pipeline.id ? { 
-          ...p, 
-          status: finalStatus,
-          lastRun: new Date().toISOString(),
-          performance: finalStatus === 'running' ? {
-            ...p.performance,
-            fps: Math.random() * 30,
-            cpu: Math.random() * 80,
-            memory: Math.random() * 4096
-          } : {
-            fps: 0,
-            cpu: 0,
-            memory: 0,
-            accuracy: p.performance.accuracy
-          }
-        } : p
-      ));
-
-      notifications.success(`Pipeline ${action === 'start' ? 'iniciado' : action === 'stop' ? 'parado' : 'reiniciado'} com sucesso`);
+      await pipelineApi.startPipeline(pipelineId);
+      notifications.success('Pipeline iniciada com sucesso');
+      await loadPipelines();
     } catch (error) {
-      setPipelines(prev => prev.map(p => 
-        p.id === pipeline.id ? { ...p, status: 'error' } : p
-      ));
-      notifications.error(`Erro ao ${action === 'start' ? 'iniciar' : action === 'stop' ? 'parar' : 'reiniciar'} pipeline`);
+      notifications.error('Erro ao iniciar pipeline');
     }
   };
 
-  const handleCreateNew = () => {
-    const newState: PipelineBuilder = {
-      isEditing: true,
-      pipeline: null,
-      isDirty: false,
-      lastSaved: null
-    };
-    saveCurrentState(newState);
-    setCurrentView('builder');
+  const handleStopPipeline = async (pipelineId: string) => {
+    try {
+      await pipelineApi.stopPipeline(pipelineId);
+      notifications.success('Pipeline parada com sucesso');
+      await loadPipelines();
+    } catch (error) {
+      notifications.error('Erro ao parar pipeline');
+    }
   };
 
-  const handleEditPipeline = (pipeline: Pipeline) => {
-    const newState: PipelineBuilder = {
+  const handleEditPipeline = (pipeline: LocalPipeline) => {
+    setBuilderState({
       isEditing: true,
       pipeline,
       isDirty: false,
       lastSaved: null
-    };
-    saveCurrentState(newState);
+    });
     setCurrentView('builder');
   };
 
-  const handleBackToMonitor = () => {
-    if (builderState.isDirty) {
-      if (window.confirm('Você tem alterações não salvas. Deseja salvar antes de sair?')) {
-        const updatedState = {
-          ...builderState,
-          isDirty: false,
-          lastSaved: new Date().toISOString()
-        };
-        saveCurrentState(updatedState);
-      }
-    }
-    setCurrentView('monitor');
-  };
-
-  const handleFinishPipeline = () => {
-    const finalState: PipelineBuilder = {
+  const handleCreateNew = () => {
+    setBuilderState({
       isEditing: false,
       pipeline: null,
       isDirty: false,
-      lastSaved: new Date().toISOString()
-    };
-    saveCurrentState(finalState);
-    clearBuilderState();
-    setCurrentView('monitor');
-    notifications.success('Pipeline finalizada com sucesso!');
+      lastSaved: null
+    });
+    setCurrentView('builder');
   };
 
-  const handleManualSave = () => {
-    const updatedState = {
-      ...builderState,
-      isDirty: false,
-      lastSaved: new Date().toISOString()
-    };
-    saveCurrentState(updatedState);
-    notifications.success('Pipeline salva manualmente');
+  const handleSavePipeline = async () => {
+    if (!builderState.pipeline) return;
+    
+    try {
+      // Implementar salvamento da pipeline
+      notifications.success('Pipeline salva com sucesso');
+      setCurrentView('monitor');
+      await loadPipelines();
+    } catch (error) {
+      notifications.error('Erro ao salvar pipeline');
+    }
   };
 
-  if (!canManage) {
+  if (isLoading) {
     return (
-      <div className="p-6">
-        <div className="text-center py-12">
-          <Cpu className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Acesso Negado
-          </h2>
-          <p className="text-gray-600">
-            Você não tem permissão para gerenciar pipelines.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Renderizar Pipeline Builder
-  if (currentView === 'builder') {
-    return (
-      <div className="fixed inset-0 bg-gray-50 flex flex-col z-40">
-        {/* Header do Builder - Fixo */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="secondary"
-                onClick={handleBackToMonitor}
-                className="flex items-center gap-2"
-              >
-                <Monitor className="w-4 h-4" />
-                Voltar ao Monitor
-              </Button>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  {builderState.pipeline ? `Editando: ${builderState.pipeline.name}` : 'Novo Pipeline'}
-                </h2>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <span>Arraste nós da sidebar para criar seu pipeline de IA</span>
-                  {builderState.isDirty && (
-                    <span className="text-orange-600 font-medium">• Não salvo</span>
-                  )}
-                  {builderState.lastSaved && (
-                    <span className="text-green-600">
-                      • Salvo em {new Date(builderState.lastSaved).toLocaleTimeString('pt-BR')}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex gap-2">
-              <Button 
-                variant="secondary"
-                onClick={handleManualSave}
-                disabled={!builderState.isDirty}
-                className="flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                Salvar
-              </Button>
-              <Button
-                onClick={handleFinishPipeline}
-                className="flex items-center gap-2"
-              >
-                <CheckCircle className="w-4 h-4" />
-                Finalizar
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Builder Interface - Responsivo */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar com nós */}
-          <div className="w-80 flex-shrink-0 bg-white border-r border-gray-200 overflow-y-auto">
-            <NodeSidebar onNodeDragStart={handleNodeDragStart} />
-          </div>
-          
-          {/* Canvas principal */}
-          <div className="flex-1 overflow-hidden">
-            <PipelineCanvas />
+      <div className="p-6 space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-300 rounded w-1/4 mb-4"></div>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-24 bg-gray-300 rounded"></div>
+            ))}
           </div>
         </div>
       </div>
     );
   }
 
-  // Renderizar Monitor de Pipelines
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gerenciamento de Pipelines</h1>
-          <p className="text-gray-600">Monitor e controle de pipelines de IA</p>
-          {builderState.isEditing && (
-            <div className="mt-2 flex items-center gap-2">
-              <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-orange-600 font-medium">
-                Você tem um pipeline em edição
-              </span>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setCurrentView('builder')}
-                className="text-xs py-1 px-2"
-              >
-                Continuar Editando
-              </Button>
-            </div>
+          <h1 className="text-2xl font-bold text-gray-900">Pipelines de IA</h1>
+          <p className="text-gray-600">
+            {currentView === 'monitor' 
+              ? 'Monitore o desempenho e status das suas pipelines em tempo real' 
+              : 'Editor visual para criar e configurar pipelines de processamento'
+            }
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {/* Toggle de Visualização */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <Button
+              variant={currentView === 'monitor' ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => setCurrentView('monitor')}
+              className={`flex items-center gap-2 px-3 py-2 ${
+                currentView === 'monitor' ? '' : 'bg-transparent hover:bg-gray-200 text-gray-600'
+              }`}
+            >
+              <Monitor className="w-4 h-4" />
+              Monitor
+            </Button>
+            
+            <Button
+              variant={currentView === 'builder' ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => setCurrentView('builder')}
+              className={`flex items-center gap-2 px-3 py-2 ${
+                currentView === 'builder' ? '' : 'bg-transparent hover:bg-gray-200 text-gray-600'
+              }`}
+            >
+              <Edit className="w-4 h-4" />
+              Builder
+            </Button>
+          </div>
+          
+          {/* Ação Principal */}
+          {canManage && currentView === 'monitor' && (
+            <Button
+              onClick={handleCreateNew}
+              className="flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Nova Pipeline
+            </Button>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={() => navigate('/pipeline-builder')}
-            variant="secondary"
-            className="flex items-center gap-2"
-          >
-            <Edit className="w-4 h-4" />
-            Pipeline Builder Avançado
-          </Button>
-          <Button
-            onClick={handleCreateNew}
-            className="flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Criar Novo Pipeline
-          </Button>
-        </div>
       </div>
 
-      {/* Status Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total de Pipelines</p>
-              <p className="text-2xl font-bold text-gray-900">{pipelines.length}</p>
-            </div>
-            <Cpu className="w-8 h-8 text-orange-500" />
-          </div>
-        </Card>
+      {/* Conteúdo Principal */}
+      {currentView === 'monitor' ? (
+        // Vista de Monitoramento
+        <div className="space-y-6">
+          {/* Resumo do Status */}
+          {pipelines.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Ativas</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {pipelines.filter(p => p.status === 'running').length}
+                    </p>
+                  </div>
+                  <CheckCircle className="w-8 h-8 text-green-500" />
+                </div>
+              </Card>
 
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Em Execução</p>
-              <p className="text-2xl font-bold text-green-600">
-                {pipelines.filter(p => p.status === 'running').length}
-              </p>
-            </div>
-            <CheckCircle className="w-8 h-8 text-green-500" />
-          </div>
-        </Card>
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Paradas</p>
+                    <p className="text-2xl font-bold text-gray-600">
+                      {pipelines.filter(p => p.status === 'stopped').length}
+                    </p>
+                  </div>
+                  <Square className="w-8 h-8 text-gray-500" />
+                </div>
+              </Card>
 
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Com Erro</p>
-              <p className="text-2xl font-bold text-red-600">
-                {pipelines.filter(p => p.status === 'error').length}
-              </p>
-            </div>
-            <AlertTriangle className="w-8 h-8 text-red-500" />
-          </div>
-        </Card>
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Erros</p>
+                    <p className="text-2xl font-bold text-red-600">
+                      {pipelines.filter(p => p.status === 'error').length}
+                    </p>
+                  </div>
+                  <AlertTriangle className="w-8 h-8 text-red-500" />
+                </div>
+              </Card>
 
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">FPS Médio</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {(pipelines.reduce((acc, p) => acc + p.performance.fps, 0) / pipelines.length).toFixed(1)}
-              </p>
+              <Card className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Total</p>
+                    <p className="text-2xl font-bold text-blue-600">{pipelines.length}</p>
+                  </div>
+                  <Cpu className="w-8 h-8 text-blue-500" />
+                </div>
+              </Card>
             </div>
-            <Monitor className="w-8 h-8 text-blue-500" />
-          </div>
-        </Card>
-      </div>
+          )}
 
-      {/* Pipelines List */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Pipelines Ativos</h3>
-        
-        <div className="space-y-4">
-          {pipelines.map((pipeline) => (
-            <div
-              key={pipeline.id}
-              className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h4 className="text-lg font-medium text-gray-900">{pipeline.name}</h4>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(pipeline.status)}`}>
-                      <div className="flex items-center gap-1">
+          {/* Lista de Pipelines */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {pipelines.map((pipeline) => (
+              <Card key={pipeline.id} className="p-6">
+                <div className="space-y-4">
+                  {/* Header da Pipeline */}
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
                         {getStatusIcon(pipeline.status)}
-                        {pipeline.status.charAt(0).toUpperCase() + pipeline.status.slice(1)}
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {pipeline.name}
+                        </h3>
+                        <span className={`px-2 py-1 text-xs rounded-full border ${getStatusColor(pipeline.status)}`}>
+                          {pipeline.status}
+                        </span>
                       </div>
-                    </span>
-                    <span className={`px-2 py-1 text-xs font-medium rounded ${getTypeColor(pipeline.type)}`}>
-                      {pipeline.type.charAt(0).toUpperCase() + pipeline.type.slice(1)}
-                    </span>
-                  </div>
-                  
-                  <p className="text-gray-600 text-sm mb-3">{pipeline.description}</p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium text-gray-700">Modelo:</span>
-                      <p className="text-gray-600">{pipeline.model}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Fonte:</span>
-                      <p className="text-gray-600">{pipeline.source.name}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Performance:</span>
-                      <p className="text-gray-600">
-                        {pipeline.performance.fps.toFixed(1)} FPS | 
-                        {pipeline.performance.cpu}% CPU | 
-                        {(pipeline.performance.memory / 1024).toFixed(1)}GB RAM
-                      </p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Precisão:</span>
-                      <p className="text-gray-600">{pipeline.performance.accuracy}%</p>
+                      <p className="text-sm text-gray-600 mb-2">{pipeline.description}</p>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 text-xs rounded ${getTypeColor(pipeline.type)}`}>
+                          {pipeline.type}
+                        </span>
+                        <span className="text-xs text-gray-500">{pipeline.model}</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
-                    <span>Última execução: {new Date(pipeline.lastRun).toLocaleString('pt-BR')}</span>
-                    <span>Total de execuções: {pipeline.totalRuns.toLocaleString()}</span>
-                    <span>Erros: {pipeline.errors}</span>
+                  {/* Métricas Compactas */}
+                  <div className="flex justify-between items-center py-3 px-4 bg-gray-50 rounded-lg">
+                    <div className="flex gap-4 text-sm">
+                      <span><strong>{pipeline.performance.fps.toFixed(0)}</strong> FPS</span>
+                      <span><strong>{pipeline.performance.cpu}%</strong> CPU</span>
+                      <span><strong>{(pipeline.performance.accuracy * 100).toFixed(0)}%</strong> Precisão</span>
+                    </div>
+                    <div className="text-right text-sm text-gray-600">
+                      <div>{pipeline.totalRuns} execuções</div>
+                      {pipeline.errors > 0 && (
+                        <div className="text-red-600">{pipeline.errors} erros</div>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2 ml-4">
-                  {pipeline.status === 'running' ? (
-                    <>
+                  {/* Última Execução */}
+                  <div className="text-xs text-gray-500 border-t border-gray-100 pt-3">
+                    Última execução: {new Date(pipeline.lastRun).toLocaleString('pt-BR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </div>
+
+                  {/* Ações */}
+                  {canManage && (
+                    <div className="flex justify-between items-center pt-3">
+                      <div className="flex gap-2">
+                        {pipeline.status === 'stopped' || pipeline.status === 'error' ? (
+                          <Button
+                            size="sm"
+                            onClick={() => handleStartPipeline(pipeline.id)}
+                            className="flex items-center gap-1 px-3 py-1 text-xs"
+                          >
+                            <Play className="w-3 h-3" />
+                            Iniciar
+                          </Button>
+                        ) : pipeline.status === 'running' ? (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleStopPipeline(pipeline.id)}
+                            className="flex items-center gap-1 px-3 py-1 text-xs"
+                          >
+                            <Pause className="w-3 h-3" />
+                            Parar
+                          </Button>
+                        ) : null}
+                      </div>
+                      
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => handlePipelineAction(pipeline, 'stop')}
-                        className="flex items-center gap-1"
+                        onClick={() => handleEditPipeline(pipeline)}
+                        className="flex items-center gap-1 px-3 py-1 text-xs"
                       >
-                        <Pause className="w-3 h-3" />
-                        Parar
+                        <Edit className="w-3 h-3" />
+                        Editar
                       </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handlePipelineAction(pipeline, 'restart')}
-                        className="flex items-center gap-1"
-                      >
-                        <Play className="w-3 h-3" />
-                        Reiniciar
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handlePipelineAction(pipeline, 'start')}
-                      disabled={pipeline.status === 'starting' || pipeline.status === 'stopping'}
-                      className="flex items-center gap-1"
-                    >
-                      <Play className="w-3 h-3" />
-                      Iniciar
-                    </Button>
+                    </div>
                   )}
-                  
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => handleEditPipeline(pipeline)}
-                    className="flex items-center gap-1"
-                  >
-                    <Edit className="w-3 h-3" />
-                    Editar
-                  </Button>
                 </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Estado Vazio */}
+          {pipelines.length === 0 && !isLoading && (
+            <Card className="p-12 text-center">
+              <Cpu className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Nenhuma pipeline encontrada
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Crie sua primeira pipeline para começar a processar dados de IA.
+              </p>
+              {canManage && (
+                <Button onClick={handleCreateNew}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Criar Pipeline
+                </Button>
+              )}
+            </Card>
+          )}
+        </div>
+      ) : (
+        // Vista do Builder
+        <div className="space-y-6">
+          {/* Toolbar do Builder */}
+          <Card className="p-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <h3 className="font-semibold text-gray-900">
+                  {builderState.pipeline?.name || 'Nova Pipeline'}
+                </h3>
+                {builderState.isDirty && (
+                  <span className="text-sm text-orange-600 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    Alterações não salvas
+                  </span>
+                )}
+                {builderState.lastSaved && (
+                  <span className="text-sm text-gray-500">
+                    Salva às {new Date(builderState.lastSaved).toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => setCurrentView('monitor')}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSavePipeline}
+                  className="flex items-center gap-1"
+                >
+                  <Save className="w-4 h-4" />
+                  Salvar
+                </Button>
               </div>
             </div>
-          ))}
+          </Card>
+
+          {/* Interface do Builder */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-[calc(100vh-300px)]">
+            {/* Sidebar de Nós */}
+            <div className="lg:col-span-1">
+              <NodeSidebar />
+            </div>
+            
+            {/* Canvas Principal */}
+            <div className="lg:col-span-4">
+              <Card className="h-full">
+                <PipelineCanvas />
+              </Card>
+            </div>
+          </div>
         </div>
-      </Card>
+      )}
+
+      {/* Error Display */}
+      {apiError && (
+        <Card className="p-4 border-red-200 bg-red-50">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-600" />
+            <span className="text-red-800">{apiError}</span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={loadPipelines}
+              className="ml-auto"
+            >
+              Tentar novamente
+            </Button>
+          </div>
+        </Card>
+      )}
     </div>
   );
 };

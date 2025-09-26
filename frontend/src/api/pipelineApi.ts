@@ -1,84 +1,72 @@
-// Tipos para Pipeline conforme manual v2.0
-export interface PipelineNode {
-  id: string;
-  pipeline_id: string;
-  node_type: string;
-  config: Record<string, any>;
-  position: { x: number; y: number };
-}
-
-export interface PipelineEdge {
-  id: string;
-  pipeline_id: string;
-  source_node_id: string;
-  target_node_id: string;
-}
+import { apiClient } from './client';
 
 export interface Pipeline {
   id: string;
   organization_id: string;
   name: string;
   description?: string;
+  status: 'active' | 'inactive' | 'error';
+  config?: any;
   created_by_id: string;
-  nodes: PipelineNode[];
-  edges: PipelineEdge[];
+  created_at: string;
+  updated_at: string;
+  nodes: any[];
+  edges: any[];
 }
 
-// Mock API functions para Pipelines
+export interface PipelineListResponse {
+  pipelines: Pipeline[];
+  total: number;
+}
+
 export const pipelineApi = {
-  async getPipelines(): Promise<Pipeline[]> {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    return [
-      {
-        id: 'pipeline-1',
-        organization_id: 'org-1',
-        name: 'Segurança Perimetral',
-        description: 'Pipeline para detecção de invasões no perímetro',
-        created_by_id: 'user-1',
-        nodes: [],
-        edges: []
-      },
-      {
-        id: 'pipeline-2',
-        organization_id: 'org-1',
-        name: 'Análise de Fila',
-        description: 'Monitoramento de filas nos caixas',
-        created_by_id: 'user-1',
-        nodes: [],
-        edges: []
-      }
-    ];
+  async getPipelines(): Promise<PipelineListResponse> {
+    const response = await apiClient.get('/api/v1/pipelines/') as any;
+    return response.data;
   },
 
-  async createPipeline(pipeline: Omit<Pipeline, 'id'>): Promise<Pipeline> {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    return {
-      ...pipeline,
-      id: `pipeline-${Date.now()}`
-    };
+  async getPipeline(id: string): Promise<Pipeline> {
+    const response = await apiClient.get(`/api/v1/pipelines/${id}`) as any;
+    return response.data;
   },
 
-  async updatePipeline(id: string, updates: Partial<Pipeline>): Promise<Pipeline> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const pipelines = await this.getPipelines();
-    const pipeline = pipelines.find(p => p.id === id);
-    
-    if (!pipeline) {
-      throw new Error('Pipeline not found');
+  async startPipeline(id: string): Promise<Pipeline> {
+    const response = await apiClient.post(`/api/v1/pipelines/${id}/execute`, {
+      action: 'start'
+    }) as any;
+    return response.data;
+  },
+
+  async stopPipeline(id: string): Promise<Pipeline> {
+    const response = await apiClient.post(`/api/v1/pipelines/${id}/execute`, {
+      action: 'stop'
+    }) as any;
+    return response.data;
+  },
+
+  getStatusColor(status: Pipeline['status']): string {
+    switch (status) {
+      case 'active':
+        return 'text-green-600 bg-green-100';
+      case 'inactive':
+        return 'text-gray-600 bg-gray-100';
+      case 'error':
+        return 'text-red-600 bg-red-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
     }
-    
-    return {
-      ...pipeline,
-      ...updates
-    };
   },
 
-  async deletePipeline(id: string): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    // Mock deletion - in real implementation would delete pipeline with given id
-    console.log(`Deleting pipeline ${id}`);
+  getStatusLabel(status: Pipeline['status']): string {
+    switch (status) {
+      case 'active':
+        return 'Ativo';
+      case 'inactive':
+        return 'Inativo';
+      case 'error':
+        return 'Erro';
+      default:
+        return 'Desconhecido';
+    }
   }
 };

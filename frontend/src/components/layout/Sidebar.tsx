@@ -10,7 +10,8 @@ import {
   User,
   LogOut,
   AlertTriangle,
-  Users
+  Users,
+  Activity
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -54,6 +55,7 @@ export const Sidebar: React.FC = () => {
     { icon: BarChart3, label: 'Dashboard', path: '/dashboard' },
     { icon: Workflow, label: 'Pipelines', path: '/pipelines' },
     { icon: AlertTriangle, label: 'Alertas', path: '/alerts' },
+    { icon: Activity, label: 'Eventos', path: '/events' },
     { icon: FileText, label: 'Relatórios', path: '/reports' },
     { icon: Users, label: 'Usuários', path: '/users' },
     { icon: Settings, label: 'Configurações', path: '/settings' },

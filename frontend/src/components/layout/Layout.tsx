@@ -18,6 +18,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         return 'Dashboard';
       case '/pipelines':
         return 'Pipelines';
+      case '/events':
+        return 'Eventos';
+      case '/alerts':
+        return 'Alertas';
       default:
         return 'AIOS';
     }
@@ -31,6 +35,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         return 'Visualização de dados agregados e métricas';
       case '/pipelines':
         return 'Criação e gerenciamento de fluxos de IA';
+      case '/events':
+        return 'Log completo de eventos do sistema AIOS';
+      case '/alerts':
+        return 'Notificações críticas e alertas de segurança';
       default:
         return undefined;
     }
