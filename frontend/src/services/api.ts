@@ -14,7 +14,7 @@ export interface Device {
   rtsp_url?: string;
   location: string;
   last_seen: string;
-  metadata?: Record<string, any>;
+  device_data?: Record<string, any>;
   organization_id: string;
   created_at: string;
   updated_at: string;
@@ -89,13 +89,13 @@ const makeRequest = async <T>(
 // API de Autenticação
 export const authApi = {
   login: async (email: string, password: string) => {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
-      body: new URLSearchParams({
-        username: email,
+      body: JSON.stringify({
+        email: email,
         password: password,
       }),
     });
@@ -122,7 +122,8 @@ export const authApi = {
 // API de Dispositivos
 export const devicesApi = {
   getAll: async (): Promise<Device[]> => {
-    return makeRequest<Device[]>('/fleet/devices');
+    const response = await makeRequest<{devices: Device[], total: number, summary: any}>('/api/v1/fleet/');
+    return response.devices;
   },
 
   getById: async (id: string): Promise<Device> => {

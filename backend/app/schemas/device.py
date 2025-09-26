@@ -9,7 +9,7 @@ class DeviceBase(BaseModel):
     device_type: str = "camera"
     rtsp_url: Optional[str] = None
     location: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    device_data: Optional[Dict[str, Any]] = None
 
 
 class DeviceCreate(DeviceBase):
@@ -22,7 +22,7 @@ class DeviceUpdate(BaseModel):
     rtsp_url: Optional[str] = None
     status: Optional[str] = None
     location: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    device_data: Optional[Dict[str, Any]] = None
     last_seen: Optional[datetime] = None
 
 
@@ -43,7 +43,7 @@ class DeviceStatusUpdate(BaseModel):
     device_id: UUID4
     status: str
     last_seen: Optional[datetime] = None
-    metadata: Optional[Dict[str, Any]] = None
+    device_data: Optional[Dict[str, Any]] = None
 
 
 # Fleet summary schema

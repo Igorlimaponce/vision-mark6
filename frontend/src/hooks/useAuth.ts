@@ -27,7 +27,7 @@ export const useAuth = () => {
 
       try {
         // Verificar token com o backend
-        const response = await fetch('http://localhost:8000/auth/me', {
+        const response = await fetch('http://localhost:8000/api/v1/auth/me', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -65,27 +65,31 @@ export const useAuth = () => {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
+      console.log('🚀 Iniciando login para:', email);
       
       // Chamar API real do backend
-      const response = await fetch('http://localhost:8000/auth/login', {
+      const response = await fetch('http://localhost:8000/api/v1/auth/login', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Type': 'application/json',
         },
-        body: new URLSearchParams({
-          username: email,
+        body: JSON.stringify({
+          email: email,
           password: password,
         }),
       });
+      
+      console.log('📡 Resposta da API:', response.status, response.statusText);
 
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Login bem-sucedido, dados recebidos:', data);
         
         // Salvar token JWT
         localStorage.setItem(AUTH_CONFIG.tokenKey, data.access_token);
         
         // Buscar dados do usuário
-        const userResponse = await fetch('http://localhost:8000/auth/me', {
+        const userResponse = await fetch('http://localhost:8000/api/v1/auth/me', {
           headers: {
             'Authorization': `Bearer ${data.access_token}`,
           },
@@ -109,15 +113,18 @@ export const useAuth = () => {
           
           return true;
         } else {
+          console.error('❌ Erro ao carregar dados do usuário');
           notifications.error('Erro ao carregar dados do usuário');
           return false;
         }
       } else {
         const errorData = await response.json();
+        console.error('❌ Erro na API:', response.status, errorData);
         notifications.error(errorData.detail || 'Email ou senha incorretos');
         return false;
       }
     } catch (error) {
+      console.error('❌ Erro de conexão:', error);
       logger.error('Login failed', 'Auth', error);
       notifications.error('Erro de conexão com o servidor');
       return false;
@@ -127,30 +134,15 @@ export const useAuth = () => {
   };
 
   const logout = async () => {
-    try {
-      const token = localStorage.getItem(AUTH_CONFIG.tokenKey);
-      
-      if (token) {
-        // Chamar endpoint de logout do backend
-        await fetch('http://localhost:8000/auth/logout', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-      }
-    } catch (error) {
-      logger.error('Logout failed', 'Auth', error);
-    } finally {
-      localStorage.removeItem(AUTH_CONFIG.tokenKey);
-      localStorage.removeItem(AUTH_CONFIG.refreshTokenKey);
-      localStorage.removeItem(AUTH_CONFIG.userKey);
-      
-      setCurrentUser(null);
-      setAuthenticated(false);
-      
-      logger.info('User logged out', 'Auth');
-    }
+    // JWT é stateless, então só precisamos limpar o localStorage
+    localStorage.removeItem(AUTH_CONFIG.tokenKey);
+    localStorage.removeItem(AUTH_CONFIG.refreshTokenKey);
+    localStorage.removeItem(AUTH_CONFIG.userKey);
+    
+    setCurrentUser(null);
+    setAuthenticated(false);
+    
+    logger.info('User logged out', 'Auth');
   };
 
   const hasPermission = (permission: string): boolean => {

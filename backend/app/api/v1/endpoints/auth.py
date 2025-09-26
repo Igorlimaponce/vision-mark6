@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_current_active_user, get_current_user, check_organization_access
-from app.core.security import create_access_token, authenticate_user
+from app.core.security import create_access_token
+from app.crud.crud_user import authenticate_user
 from app.core.config import settings
 from app.crud import crud_user
 from app.db.session import get_db
@@ -29,7 +30,7 @@ def login(
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    elif user.is_active != "Y":
+    elif not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)

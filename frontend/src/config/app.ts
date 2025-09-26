@@ -8,7 +8,7 @@ export const APP_CONFIG = {
   
   // Configurações de WebSocket conforme seção 7.2
   websocket: {
-    url: import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws',
+    url: import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws',
     reconnectInterval: 5000,
     maxReconnectAttempts: 10,
     heartbeatInterval: 30000,
@@ -16,7 +16,7 @@ export const APP_CONFIG = {
   
   // Configurações de API conforme seção 6
   api: {
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
+    baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
     timeout: 30000,
     retryAttempts: 3,
     retryDelay: 1000,

@@ -45,7 +45,7 @@ def get_current_active_user(
     """
     Dependency para garantir que o usuário está ativo.
     """
-    if current_user.is_active != "Y":
+    if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 

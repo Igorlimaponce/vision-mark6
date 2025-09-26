@@ -18,7 +18,8 @@ RUN apt-get update \
         libpq-dev \
         gcc \
         g++ \
-        libgl1-mesa-glx \
+        libgl1-mesa-dev \
+        libegl1-mesa-dev \
         libglib2.0-0 \
         libsm6 \
         libxext6 \
@@ -31,6 +32,8 @@ RUN apt-get update \
         gstreamer1.0-plugins-ugly \
         gstreamer1.0-libav \
         libgstreamer-plugins-base1.0-dev \
+        python3-opencv \
+        libopencv-dev \
         git \
     && rm -rf /var/lib/apt/lists/*
 

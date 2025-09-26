@@ -64,7 +64,7 @@ export const FleetManagement: React.FC = () => {
   const filteredDevices = devices.filter(device =>
     device.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     device.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    device.location.toLowerCase().includes(searchTerm.toLowerCase())
+    (device.location && device.location.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleDeviceClick = (deviceId: string) => {

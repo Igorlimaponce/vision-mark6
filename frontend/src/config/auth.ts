@@ -2,7 +2,7 @@
 
 export const AUTH_CONFIG = {
   // URLs de autenticação
-  loginUrl: '/api/auth/login',
+  loginUrl: '/api/v1/auth/login',
   logoutUrl: '/api/auth/logout',
   refreshUrl: '/api/auth/refresh',
   profileUrl: '/api/auth/profile',

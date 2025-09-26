@@ -1,5 +1,4 @@
 # AIOS v2.0 - Complete Docker Compose Configuration
-version: '3.8'
 
 services:
   # ================================

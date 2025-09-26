@@ -1,12 +1,9 @@
 from datetime import datetime, timedelta
 from typing import Any, Union
 from jose import jwt
-from passlib.context import CryptContext
-from passlib.hash import bcrypt
+import bcrypt
 
 from app.core.config import settings
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def create_access_token(
@@ -30,14 +27,19 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verifica se a senha em texto plano corresponde ao hash armazenado.
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    except Exception as e:
+        print(f"Error verifying password: {e}")
+        return False
 
 
 def get_password_hash(password: str) -> str:
     """
     Gera o hash da senha para armazenamento seguro.
     """
-    return pwd_context.hash(password)
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 
 def verify_token(token: str) -> Union[str, None]:

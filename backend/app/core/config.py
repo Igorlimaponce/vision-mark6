@@ -9,15 +9,21 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "AIOS - Sistema de Análise e Inteligência Operacional"
     VERSION: str = "2.0.0"
     
-    # Database
-    POSTGRES_SERVER: str = "localhost"
-    POSTGRES_USER: str = "aios"
-    POSTGRES_PASSWORD: str = "aios_password"
-    POSTGRES_DB: str = "aios_db"
+    # Database - Use env vars or defaults
+    POSTGRES_SERVER: str = "db"  # Default to docker service name
+    POSTGRES_USER: str = "postgres"  # Default to postgres user
+    POSTGRES_PASSWORD: str = "change_this_secure_password"
+    POSTGRES_DB: str = "aios_dev"  # Default to development db
     POSTGRES_PORT: str = "5432"
+    
+    # Also support DATABASE_URL override
+    DATABASE_URL: Optional[str] = None
     
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
+        # Use DATABASE_URL from environment if available
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
     
     @property

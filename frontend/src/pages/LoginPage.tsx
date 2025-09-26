@@ -30,12 +30,21 @@ export const LoginPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🔐 Tentativa de login:', { email, password: '*****' });
     
-    if (!validate()) return;
+    if (!validate()) {
+      console.log('❌ Validação falhou:', errors);
+      return;
+    }
 
+    console.log('✅ Validação passou, chamando login...');
     const success = await login(email, password);
+    console.log('🔄 Resultado do login:', success);
     if (success) {
+      console.log('✅ Login bem-sucedido, redirecionando...');
       // Redirect será tratado pelo router
+    } else {
+      console.log('❌ Login falhou');
     }
   };
 

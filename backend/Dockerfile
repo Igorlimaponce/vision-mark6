@@ -34,10 +34,13 @@ RUN apt-get update \
         libopenblas-dev \
         liblapack-dev \
         libgl1-mesa-dev \
+        libegl1-mesa-dev \
         libgthread-2.0-0 \
         gfortran \
         wget \
         unzip \
+        python3-opencv \
+        libopencv-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies in stages
